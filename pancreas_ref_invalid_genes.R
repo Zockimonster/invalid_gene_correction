@@ -6,15 +6,6 @@ required_packages <- c( 'Matrix', 'dplyr','rhdf5', 'Seurat', 'patchwork', 'Seura
 invisible(lapply(required_packages, library, character.only = T))
 
 # obtain directories
-wp <- "/data/cephfs-2/unmirrored/groups/krieger/users/spiese_c/visium/"
-# wp <- "C:/Users/Eli/Desktop/Patho/"
-
-ref_dir <- paste0(wp, "spot_deconvolution/celltype_deconvolution/References/")
-peng_nr <- "PRJCA001063_besca"
-peng_dir <- paste0(ref_dir,peng_nr, "/")
-ig_dir <- paste0(ref_dir, "invalid_genes/")
-gse_dir <- paste0(ig_dir, "gse111672/")
-
 peng_dir <- "folder where peng seurat file  (StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad) can be loaded"
 ig_dir <- "folder where pk_all.rds can be loaded"
 gse_dir <- paste0(ig_dir, "gse111672/")
@@ -682,6 +673,7 @@ write.csv(month_gene_dict, paste0(ig_dir, "month_gene_dict.csv"), row.names = FA
 # to replace month genes in GSE filtered matrix data
 GSE111672_A$Genes[GSE111672_A$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
 GSE111672_B$Genes[GSE111672_B$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
+
 
 
 
