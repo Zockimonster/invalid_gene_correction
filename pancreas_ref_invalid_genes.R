@@ -1,5 +1,4 @@
 
-
 # Load required libraries 
 required_packages <- c( 'Matrix', 'dplyr','rhdf5', 'Seurat', 'patchwork', 'SeuratData', 'ggplot2', 'SeuratDisk')
 
@@ -9,6 +8,42 @@ invisible(lapply(required_packages, library, character.only = T))
 peng_dir <- "folder where peng seurat file  (StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad) can be loaded"
 ig_dir <- "folder where pk_all.rds can be loaded"
 gse_dir <- paste0(ig_dir, "gse111672/")
+
+
+check_genes <- function(data){
+  invalid_features <- data[unique(c(grep("-Jan$", rownames(data)),
+                             grep("-Feb$", rownames(data)),
+                             grep("-Mar$", rownames(data)), 
+                             grep("-Apr$", rownames(data)),
+                             grep("-May$", rownames(data)),
+                             grep("-Jun$", rownames(data)),
+                             grep("-Jul$", rownames(data)),
+                             grep("-Aug$", rownames(data)),
+                             grep("-Sep$", rownames(data)), 
+                             grep("-Oct$", rownames(data)),
+                             grep("-Nov$", rownames(data)),
+                             grep("-Dec$", rownames(data)),
+                             grep("<", rownames(data)),
+                             grep(">", rownames(data)))),]
+  return(invalid_features)}
+
+
+exclude_invalid_features <- function(data){
+  valid_features <- data[-unique(c(grep("-Jan$", rownames(data)),
+                                    grep("-Feb$", rownames(data)),
+                                    grep("-Mar$", rownames(data)), 
+                                    grep("-Apr$", rownames(data)),
+                                    grep("-May$", rownames(data)),
+                                    grep("-Jun$", rownames(data)),
+                                    grep("-Jul$", rownames(data)),
+                                    grep("-Aug$", rownames(data)),
+                                    grep("-Sep$", rownames(data)), 
+                                    grep("-Oct$", rownames(data)),
+                                    grep("-Nov$", rownames(data)),
+                                    grep("-Dec$", rownames(data)),
+                                    grep("<", rownames(data)),
+                                    grep(">", rownames(data)))),]
+  return(valid_features)}
 
 
 ########################
@@ -24,21 +59,8 @@ DefaultAssay(pk_ref)
 dim(pk_ref)
 # [1]  34746 136163
 
-# subset to counts
-pk_counts <- pk_ref@assays$RNA@counts
-str(pk_counts)
-# Formal class 'dgCMatrix' [package "Matrix"] with 6 slots
-# ..@ i       : int [1:305589707] 3 6 7 14 15 16 26 27 28 29 ...
-# ..@ p       : int [1:136164] 0 3342 4316 5806 6907 10096 11536 12799 13971 15290 ...
-# ..@ Dim     : int [1:2] 34746 136163
-# ..@ Dimnames:List of 2
-# .. ..$ : chr [1:34746] "LINC00115" "FAM41C" "SAMD11" "NOC2L" ...
-# .. ..$ : chr [1:136163] "T1_AAACCTGAGATGTCGG" "T1_AAACGGGGTCATGCAT" "T1_AAAGATGCATGTTGAC" "T1_AAAGATGGTCGAGTTT" ...
-# ..@ x       : num [1:305589707] 0.613 1.264 1.264 0.613 0.991 ...
-# ..@ factors : list()
-
 # check invalid features
-invalid_features <- pk_ref[c(grep("-Mar$", rownames(pk_ref)), grep("-Sep$", rownames(pk_ref)), grep("-Dec$", rownames(pk_ref)), grep("<class 'str'>", rownames(pk_ref))),]
+invalid_features <- check_genes(pk_ref)
 dim(invalid_features)
 # [1]     29 136163
 
@@ -48,9 +70,9 @@ dim(invalid_features)
 # [1]    29 10674
 
 # add info about cells with invalid counts to pk_ref
-pk_ref[["cells_with_invalid_counts"]] <- colnames(pk_ref) %in% colnames(invalid_features)
+pk_ref[["cells_with_invalid_features"]] <- colnames(pk_ref) %in% colnames(invalid_features)
 
-table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_invalid_counts)
+table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_invalid_features)
 #            FALSE  TRUE
 # CA001063   50130  7293
 # GSE111672    244  3381
@@ -59,42 +81,10 @@ table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_invalid_counts)
 # GSM4293555  4874     0
 # OUGS       11298     0
 
-library(RColorBrewer)
-# pal_set <- colorRampPalette(brewer.pal(8,"Paired"))
-png(paste0(ig_dir, "cells_with_invalid_counts.png"), 
-    width = 35, height = 20, units = "cm", res = 600)
-par(mfrow=c(2,1), mar=c(8,4,3,4))
-barplot(table(pk_ref@meta.data$cells_with_invalid_counts, pk_ref@meta.data$Project), col= c("orange", "blue"),legend.text=T, horiz=F, args.legend=list(x=7.3, y=55000, bty = "n"), 
-        las=1, main="Cells with invalid Gene Counts per Project")
-barplot(table(pk_ref@meta.data$cells_with_invalid_counts[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")]), col= c("orange", "blue"),legend.text=T, horiz=F, args.legend=list(x=45, y=4000, bty = "n"), 
-        las=2, main="Cells in Studies with invalid Gene Counts per Sample")
-dev.off()
+# obtain gene and month genes using the corresponding references
 
-
-DefaultAssay(pk_ref)
-# # [1] "RNA"
-
-# create dim plots
-library(patchwork)
-p1 <- DimPlot(pk_ref, group.by = "Cell_type", label = TRUE, label.size=3, repel = T, pt.size = 0.2) + ggtitle("Cell Type")
-p2 <-  DimPlot(pk_ref, group.by = "Type",label = TRUE, label.size=3, repel = T, pt.size = 0.2) + ggtitle("Disease State")
-p3 <-  DimPlot(pk_ref, group.by = "Project",label = TRUE, label.size=3, repel = T, pt.size = 0.2) + ggtitle("Project ID")
-p4 <-  DimPlot(pk_ref, group.by = "cells_with_invalid_counts",label = TRUE, label.size=3, repel = T, pt.size = 0.2) + ggtitle("Cells with invalid gene counts")
-plot_patched <- wrap_plots(p1,p2,p3,p4, ncol=2) + plot_annotation("UMAP for pk_all.rds") + theme(plot.title = element_text(size = 18))
-ggsave(paste0(ig_dir, "dim_plot_umap_integrated.png"), plot = plot_patched, width = 35, height =25, units = "cm")
-
-table(pk_ref@meta.data$predicted.id)
-# Acinar cell     B cell    Ductal cell type 1    Ductal cell type 2  Endocrine cell   Endothelial cell    Fibroblast cell    Macrophage cell  Stellate cell    T cell
-# 3857            5838      11605                 33607               1298              10059              11003              23703            7624             27569
-
-table(pk_ref@meta.data$Project)
-# CA001063  GSE111672  GSE154778  GSE155698 GSM4293555   OUGS
-# 57423       3625       8000      50943       4874      11298
-# hg19        hg38       hg19      hg19        hg19      hg19          
-
-
-# replace class genes from peng
-# using raw data would be advantageous to avoid subsetting & normalizing twice (but class genes are also present in raw data)
+# replace invalid features
+# class genes from peng
 class_gene_dict <- read.csv(paste0(ig_dir, "class_gene_dict.csv"))
 class_gene_dict
 #           ENSEMBL       SYMBOL      class_gene
@@ -108,8 +98,7 @@ class_gene_dict
 # 8 ENSG00000261729 GS1-204I12.4 <class 'str'>-7
 # 9 ENSG00000225833      ACE2-DT <class 'str'>-8
 
-# replace month genes from gse111672
-# using raw data would be advantageous to avoid invalid genes as well as subsetting & normalizing twice
+# month genes from gse111672
 month_gene_dict <- read.csv(paste0(ig_dir, "month_gene_dict.csv"))
 month_gene_dict
 #     Month    Gene
@@ -141,34 +130,6 @@ month_gene_dict
 # 26  8-Sep   SEPT8
 # 27  9-Sep   SEPT9
 
-# to replace class genes in pk_ref data
-class_gene_dict$SYMBOL[class_gene_dict$SYMBOL %in% rownames(pk_ref)]
-# [1] "CTC-338M12.4" "GS1-124K5.11" "GS1-24F4.2"   "GS1-204I12.4"
-
-setdiff(class_gene_dict$class_gene, rownames(pk_ref))
-# character(0)
-setdiff(class_gene_dict$class_gene, rownames(invalid_features))
-# character(0)
-
-# replace month genes in pk_ref data
-month_gene_dict$Gene[month_gene_dict$Gene %in% rownames(pk_ref)]
-# [1] "DEC1"    "MARC1"   "MARC2"   "MARCH1"  "MARCH10" "MARCH11" "MARCH2"
-# [8] "MARCH3"  "MARCH4"  "MARCH5"  "MARCH6"  "MARCH7"  "MARCH8"  "MARCH9"
-# [15] "SEPT1"   "SEPT10"  "SEPT11"  "SEPT12"  "SEPT14"  "SEPT2"   "SEPT3"
-# [22] "SEPT4"   "SEPT5"   "SEPT6"   "SEPT7"   "SEPT8"   "SEPT9"
-
-all(month_gene_dict$Gene %in% rownames(pk_ref))
-# [1] TRUE
-
-setdiff(month_gene_dict$Month, rownames(pk_ref))
-# [1] "1-Dec"  "10-Mar" "11-Mar" "12-Sep" "5-Sep"
-setdiff(month_gene_dict$Month, rownames(invalid_features))
-# [1] "1-Dec"  "10-Mar" "11-Mar" "12-Sep" "5-Sep"
-
-any(duplicated(rownames(pk_ref))) || any(duplicated(rownames(invalid_features)))
-# [1] FALSE
-
-
 # gene_map: named vector where names are invalid features, values are valid gene symbols
 gene_map <- c(class_gene_dict$SYMBOL, month_gene_dict$Gene)
 names(gene_map) <-  c(class_gene_dict$class_gene, month_gene_dict$Month)
@@ -190,35 +151,16 @@ gene_map
 # 9-Sep
 # "SEPT9"
 
-
-# replace invalid genes in invalid features
-rownames(pk_ref)[c(grep("-Mar", rownames(pk_ref)), grep("-Sep", rownames(pk_ref)), grep("-Dec", rownames(pk_ref)), grep("<class 'str'>", rownames(pk_ref)))]
-# [1] "1-Mar"           "2-Mar"           "3-Mar"           "4-Mar"
-# [5] "5-Mar"           "6-Mar"           "7-Mar"           "8-Mar"
-# [9] "9-Mar"           "1-Sep"           "10-Sep"          "11-Sep"
-# [13] "14-Sep"          "2-Sep"           "3-Sep"           "4-Sep"
-# [17] "6-Sep"           "7-Sep"           "8-Sep"           "9-Sep"
-# [21] "<class 'str'>"   "<class 'str'>-1" "<class 'str'>-2" "<class 'str'>-3"
-# [25] "<class 'str'>-4" "<class 'str'>-5" "<class 'str'>-6" "<class 'str'>-7"
-# [29] "<class 'str'>-8"
-
-invalid_features <- pk_ref[c(grep("-Mar$", rownames(pk_ref)), grep("-Sep$", rownames(pk_ref)), grep("-Dec$", rownames(pk_ref)), grep("<class 'str'>", rownames(pk_ref))),]
-dim(invalid_features)
-# [1]     29 136163
-
-
 ##########################################################################################################
+# code used to obtain genes in GSE111672
 rownames(GSE111672_A) <- make.names(GSE111672_A$Genes)
 # function (names, unique = FALSE, allow_ = TRUE) 
-# {
-#   names <- as.character(names)
+# {names <- as.character(names)
 #   names2 <- .Internal(make.names(names, allow_))
 #   if (unique) {
 #     o <- order(names != names2)
-#     names2[o] <- make.unique(names2[o])
-#   }
-#   names2
-# }
+#     names2[o] <- make.unique(names2[o])}
+#   names2}
 # by default make.names(unique=FALSE)
 GSE111672_A <- distinct(GSE111672_A,Genes ,.keep_all = TRUE)
 # distinct() keeps the first occurrence of each duplicate by default.
@@ -230,57 +172,167 @@ GSE111672_A <- distinct(GSE111672_A,Genes ,.keep_all = TRUE)
 # Therefore, "1-Mar" and "2-Mar" must correspond to MARC1 and MARC2, since distinct() kept the first.
 ##########################################################################################################
 
+# -> MARCH1 and MARCH2 were incorrectly excluded
+# so MARCH1 and MARCH2 can be kept to obtain cells with invalid counts
+
 # subset gene map
-# exclude MARCH1 & MARCH2 (duplicated 1-Mar & 2-Mar)
-gene_map <- gene_map[!duplicated(names(gene_map))]
-# only keep entries which can be found in pk_ref
+# only keep entries for which invalid genes can be found in pk_ref
 gene_map <- gene_map[names(gene_map) %in% rownames(pk_ref)]
 gene_map
 # <class 'str'> <class 'str'>-1 <class 'str'>-2 <class 'str'>-3 <class 'str'>-4
 # "TERLR1"  "CTC-338M12.4"     "LINC03011"  "GS1-124K5.11"     "THBS4-AS1"
 # <class 'str'>-5 <class 'str'>-6 <class 'str'>-7 <class 'str'>-8           1-Mar
 # "GS1-24F4.2"     "TENM2-AS1"  "GS1-204I12.4"       "ACE2-DT"         "MARC1"
-# 2-Mar           3-Mar           4-Mar           5-Mar           6-Mar
-# "MARC2"        "MARCH3"        "MARCH4"        "MARCH5"        "MARCH6"
-# 7-Mar           8-Mar           9-Mar           1-Sep          10-Sep
-# "MARCH7"        "MARCH8"        "MARCH9"         "SEPT1"        "SEPT10"
-# 11-Sep          14-Sep           2-Sep           3-Sep           4-Sep
-# "SEPT11"        "SEPT14"         "SEPT2"         "SEPT3"         "SEPT4"
-# 6-Sep           7-Sep           8-Sep           9-Sep
-# "SEPT6"         "SEPT7"         "SEPT8"         "SEPT9"
-
-# to replace invalid genes in invalid_features
-invalid_names <- rownames(invalid_features)
-rownames(invalid_features@assays$RNA@counts) <- gene_map[match(invalid_names, names(gene_map))]
-rownames(invalid_features@assays$RNA@data) <- gene_map[match(invalid_names, names(gene_map))]
-rownames(invalid_features@assays$RNA@meta.features) <- gene_map[match(invalid_names, names(gene_map))]
-dim(invalid_features)
-# [1]     29 136163
+# 2-Mar           1-Mar           2-Mar           3-Mar           4-Mar
+# "MARC2"        "MARCH1"        "MARCH2"        "MARCH3"        "MARCH4"
+# 5-Mar           6-Mar           7-Mar           8-Mar           9-Mar
+# "MARCH5"        "MARCH6"        "MARCH7"        "MARCH8"        "MARCH9"
+# 1-Sep          10-Sep          11-Sep          14-Sep           2-Sep
+# "SEPT1"        "SEPT10"        "SEPT11"        "SEPT14"         "SEPT2"
+# 3-Sep           4-Sep           6-Sep           7-Sep           8-Sep
+# "SEPT3"         "SEPT4"         "SEPT6"         "SEPT7"         "SEPT8"
+# 9-Sep
+# "SEPT9"
 
 # exclude invalid features in pk_ref
-valid_features <- pk_ref[-c(grep("-Mar$", rownames(pk_ref)), grep("-Sep$", rownames(pk_ref)), grep("-Dec$", rownames(pk_ref)), grep("<class 'str'>", rownames(pk_ref))),]
+valid_features <- exclude_invalid_features(pk_ref)
 dim(valid_features)
 # [1]  34717 136163
 
-# 24 genes are already present in valid features -> counts (embedding) would change
-intersect(rownames(invalid_features), rownames(valid_features))
-# [1] "MARC1"        "MARC2"        "MARCH3"       "MARCH4"       "MARCH5"
-# [6] "MARCH6"       "MARCH7"       "MARCH8"       "MARCH9"       "SEPT1"
-# [11] "SEPT10"       "SEPT11"       "SEPT14"       "SEPT2"        "SEPT3"
-# [16] "SEPT4"        "SEPT6"        "SEPT7"        "SEPT8"        "SEPT9"
-# [21] "CTC-338M12.4" "GS1-124K5.11" "GS1-24F4.2"   "GS1-204I12.4"
-length(intersect(rownames(invalid_features), rownames(valid_features)))
-# [1] 24
-length(intersect(rownames(invalid_features), rownames(valid_features)))/length(rownames(invalid_features))
-# [1] 0.8275862
+length(intersect(gene_map, rownames(valid_features)))
+# [1] 26
+
+
+# 24 genes are already present in valid features & MARCH1 & MARCH2 were incorrectly omitted 
+# -> counts (embedding) would change
+intersect(gene_map, rownames(valid_features))
+# [1] "CTC-338M12.4" "GS1-124K5.11" "GS1-24F4.2"   "GS1-204I12.4" "MARC1"
+# [6] "MARC2"        "MARCH1"       "MARCH2"       "MARCH3"       "MARCH4"
+# [11] "MARCH5"       "MARCH6"       "MARCH7"       "MARCH8"       "MARCH9"
+# [16] "SEPT1"        "SEPT10"       "SEPT11"       "SEPT14"       "SEPT2"
+# [21] "SEPT3"        "SEPT4"        "SEPT6"        "SEPT7"        "SEPT8"
+# [26] "SEPT9"
 
 # only 5 new genes in invalid features
-setdiff(rownames(invalid_features), rownames(valid_features))
+setdiff(gene_map, rownames(valid_features))
 # [1] "TERLR1"    "LINC03011" "THBS4-AS1" "TENM2-AS1" "ACE2-DT"
 
-# -> re-run using raw matrices???
+##########################################################################################################
 
-################################################################################################################################################################################
+incorrect_counts <- pk_ref[rownames(pk_ref) %in% intersect(gene_map, rownames(valid_features)),]
+# exclude cells with no counts
+incorrect_counts <- subset(incorrect_counts, subset=nFeature_RNA >0 & nCount_RNA >0)
+dim(incorrect_counts)
+# [1]    26 62571
+
+
+pk_ref[["cells_with_incorrect_counts"]] <- colnames(pk_ref) %in% colnames(incorrect_counts)
+
+
+table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_invalid_features)
+#            FALSE  TRUE
+# CA001063   50130  7293
+# GSE111672    244  3381
+# GSE154778   8000     0
+# GSE155698  50943     0
+# GSM4293555  4874     0
+# OUGS       11298     0
+
+prop.table(table(pk_ref@meta.data$cells_with_invalid_features))
+# FALSE       TRUE
+# 0.92160866 0.07839134
+
+sum(pk_ref@meta.data$cells_with_invalid_features)
+# [1] 10674
+
+mean(pk_ref@meta.data$cells_with_invalid_features)
+# [1] 0.07839134
+
+
+table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_incorrect_counts)
+#            FALSE  TRUE
+# CA001063   57423     0
+# GSE111672   3625     0
+# GSE154778    409  7591
+# GSE155698   6466 44477
+# GSM4293555   620  4254
+# OUGS        5027  6271
+
+prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts))
+# FALSE      TRUE
+# 0.5404699 0.4595301
+
+sum(pk_ref@meta.data$cells_with_incorrect_counts)
+# [1] 62571
+
+mean(pk_ref@meta.data$cells_with_incorrect_counts)
+# [1] 0.4595301
+
+
+# counts barplot
+png(paste0(ig_dir, "cells_with_invalid_counts.png"), 
+    width = 60, height = 20, units = "cm", res = 600)
+par(mfrow=c(2,2), mar=c(9,4,3,4))
+barplot(table(pk_ref@meta.data$cells_with_invalid_features, pk_ref@meta.data$Project), col= c("#99B4C3", "#901639"), legend.text = c(paste0("Valid: n=", sum(pk_ref@meta.data$cells_with_invalid_features==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features==FALSE),2)*100,"%)"), paste0("Invalid: n=", sum(pk_ref@meta.data$cells_with_invalid_features), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features),2)*100,"%)")), horiz=F, args.legend=list(x=7.3, y=55000, bty = "n"), 
+        las=1, main="Cells with invalid Genes per Project")
+barplot(table(pk_ref@meta.data$cells_with_incorrect_counts, pk_ref@meta.data$Project), col= c("#99B4C3", "#901639"), legend.text = c(paste0("Correct: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts==FALSE),2)*100,"%)"), paste0("Incorrect: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts),2)*100,"%)")), horiz=F, args.legend=list(x=7.3, y=55000, bty = "n"), 
+        las=1, main="Cells with incorrect Gene Counts per Project")
+barplot(table(pk_ref@meta.data$cells_with_invalid_features[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")]), col= c("#99B4C3", "#901639"), legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x=47, y=3500, bty = "n"), 
+        las=2, main="Cells in Studies with invalid Genes per Sample")
+barplot(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")]), col= c("#99B4C3", "#901639"), legend.text = c("Correct", "Incorrect"), horiz=F, args.legend=list(x=45, y=7000, bty = "n"), 
+        las=2, main="Cells in Studies with incorrect Gene Counts per Sample")
+dev.off()
+
+# percentage barplots 
+png(paste0(ig_dir, "prop_cells_with_invalid_counts.png"), 
+    width = 60, height = 20, units = "cm", res = 600)
+par(mfrow=c(2,2), mar=c(9,4,3,4))
+# features
+prop <- prop.table(table(pk_ref@meta.data$cells_with_invalid_features, pk_ref@meta.data$Project))
+bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c(paste0("Valid: n=", sum(pk_ref@meta.data$cells_with_invalid_features==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features==FALSE),2)*100,"%)"), paste0("Invalid: n=", sum(pk_ref@meta.data$cells_with_invalid_features), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features),2)*100,"%)")), horiz=F, args.legend=list(x = "topright", bty = "n"), 
+        las=1, main="Proportion of Cells with invalid Genes per Project", ylim = c(0,1))
+# add percentages
+text(x = bp, y = colSums(prop) + 0.1, 
+     labels = paste0(round(prop[2,] * 100, 1), "%"), cex = 0.8)
+# counts
+prop <- prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts, pk_ref@meta.data$Project))
+bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c(paste0("Correct: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts==FALSE),2)*100,"%)"), paste0("Incorrect: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts),2)*100,"%)")), horiz=F, args.legend=list(x = "topright", bty = "n"), 
+        las=1, main="Proportion of Cells with incorrect Gene Counts per Project", ylim = c(0,1))
+# add percentages
+text(x = bp, y = colSums(prop) + 0.1, 
+     labels = paste0(round(prop[2,]  * 100, 1), "%"), cex = 0.8)
+
+# detailed
+prop <- prop.table(table(pk_ref@meta.data$cells_with_invalid_features[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")]))
+bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x = "topright", bty = "n"), 
+        las=2, main="Proportion of Cells in Studies with invalid Genes per Sample", ylim = c(0,0.2))
+# add percentages
+text(x = bp, y = colSums(prop) + 0.03, 
+     labels = paste0(round(prop[2,]  * 100, 1), "%"), cex = 0.8, srt = 90)
+
+# detailed
+prop <- prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")]))
+bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x = "topright", bty = "n"), 
+        las=2, main="Proportion of Cells in Studies with incorrect Gene Counts per Sample", ylim = c(0,0.2))
+# add percentages
+text(x = bp, y = colSums(prop) + 0.03, 
+     labels = paste0(round(prop[2,]  * 100, 1), "%"), cex = 0.8, srt = 90)
+dev.off()
+
+
+DefaultAssay(pk_ref)
+# # [1] "RNA"
+
+# create dim plots
+library(patchwork)
+p1 <- DimPlot(pk_ref, group.by = "Cell_type", label = TRUE, label.size=3, repel = T, pt.size = 0.6) + ggtitle("Cell Type")+ theme(legend.text = element_text(size=11))
+p2 <-  DimPlot(pk_ref, group.by = "cells_with_invalid_features",label = F, pt.size = 0.8) +scale_colour_manual(labels = c(paste0("Valid: n=", sum(pk_ref@meta.data$cells_with_invalid_features==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features==FALSE),2)*100,"%)"), paste0("Invalid: n=", sum(pk_ref@meta.data$cells_with_invalid_features), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features),2)*100,"%)")), values = c("#99B4C3", "#901639"))  + ggtitle("Cells with invalid gene symbols") + theme(legend.text = element_text(size=10))
+p3 <-  DimPlot(pk_ref, group.by = "Project",label = TRUE, label.size=3, repel = T, pt.size = 0.6) + ggtitle("Project ID")+ theme(legend.text = element_text(size=11))
+p4 <-  DimPlot(pk_ref, group.by = "cells_with_incorrect_counts",label = F, pt.size = 0.8)  +scale_colour_manual(labels = c(paste0("Correct: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts==FALSE),2)*100,"%)"), paste0("Incorrect: n=", sum(pk_ref@meta.data$cells_with_incorrect_counts), " (",round(mean(pk_ref@meta.data$cells_with_incorrect_counts),2)*100,"%)")), values = c("#99B4C3", "#901639")) + ggtitle("Cells with incorrect gene counts")+ theme(legend.text = element_text(size=10))
+plot_patched <- wrap_plots(p1,p2,p3,p4, ncol=2) + plot_annotation("UMAP for pk_all.rds (Batch Correction with harmony)") + theme(plot.title = element_text(size = 18))
+ggsave(paste0(ig_dir, "dim_plot_umap_integrated.png"), plot = plot_patched, width = 37, height =25, units = "cm")
+
+
 
 ###########################
 ### PRJCA001063 | BESCA ###
@@ -673,6 +725,10 @@ write.csv(month_gene_dict, paste0(ig_dir, "month_gene_dict.csv"), row.names = FA
 # to replace month genes in GSE filtered matrix data
 GSE111672_A$Genes[GSE111672_A$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
 GSE111672_B$Genes[GSE111672_B$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
+
+
+
+
 
 
 
