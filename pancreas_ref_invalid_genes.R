@@ -225,9 +225,7 @@ incorrect_counts <- subset(incorrect_counts, subset=nFeature_RNA >0 & nCount_RNA
 dim(incorrect_counts)
 # [1]    26 62571
 
-
-pk_ref[["cells_with_incorrect_counts"]] <- colnames(pk_ref) %in% colnames(incorrect_counts)
-
+pk_ref[["cells_with_incorrect_counts"]] <- colnames(pk_ref) %in% c(colnames(incorrect_counts), colnames(invalid_features))
 
 table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_invalid_features)
 #            FALSE  TRUE
@@ -251,27 +249,29 @@ mean(pk_ref@meta.data$cells_with_invalid_features)
 
 table(pk_ref@meta.data$Project, pk_ref@meta.data$cells_with_incorrect_counts)
 #            FALSE  TRUE
-# CA001063   57423     0
-# GSE111672   3625     0
-# GSE154778    409  7591
-# GSE155698   6466 44477
+# CA001063   50130  7293
+# GSE111672    244  3381
+# GSE154778    410  7590
+# GSE155698   6485 44458
 # GSM4293555   620  4254
-# OUGS        5027  6271
+# OUGS        5029  6269
+
 
 prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts))
 # FALSE      TRUE
-# 0.5404699 0.4595301
+# 0.4620785 0.5379215
+
 
 sum(pk_ref@meta.data$cells_with_incorrect_counts)
-# [1] 62571
+# [1] 73245
 
 mean(pk_ref@meta.data$cells_with_incorrect_counts)
-# [1] 0.4595301
+# [1] 0.5379215
 
 
 # counts barplot
 png(paste0(ig_dir, "cells_with_invalid_counts.png"), 
-    width = 60, height = 20, units = "cm", res = 600)
+    width = 65, height = 20, units = "cm", res = 600)
 par(mfrow=c(2,2), mar=c(9,4,3,4))
 barplot(table(pk_ref@meta.data$cells_with_invalid_features, pk_ref@meta.data$Project), col= c("#99B4C3", "#901639"), legend.text = c(paste0("Valid: n=", sum(pk_ref@meta.data$cells_with_invalid_features==FALSE), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features==FALSE),2)*100,"%)"), paste0("Invalid: n=", sum(pk_ref@meta.data$cells_with_invalid_features), " (",round(mean(pk_ref@meta.data$cells_with_invalid_features),2)*100,"%)")), horiz=F, args.legend=list(x=7.3, y=55000, bty = "n"), 
         las=1, main="Cells with invalid Genes per Project")
@@ -279,13 +279,13 @@ barplot(table(pk_ref@meta.data$cells_with_incorrect_counts, pk_ref@meta.data$Pro
         las=1, main="Cells with incorrect Gene Counts per Project")
 barplot(table(pk_ref@meta.data$cells_with_invalid_features[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")]), col= c("#99B4C3", "#901639"), legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x=47, y=3500, bty = "n"), 
         las=2, main="Cells in Studies with invalid Genes per Sample")
-barplot(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")]), col= c("#99B4C3", "#901639"), legend.text = c("Correct", "Incorrect"), horiz=F, args.legend=list(x=45, y=7000, bty = "n"), 
+barplot(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063","GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063", "GSE154778", "GSE155698", "GSM4293555", "OUGS")]), col= c("#99B4C3", "#901639"), legend.text = c("Correct", "Incorrect"), horiz=F, args.legend=list(x=90, y=8000, bty = "n"), 
         las=2, main="Cells in Studies with incorrect Gene Counts per Sample")
 dev.off()
 
 # percentage barplots 
 png(paste0(ig_dir, "prop_cells_with_invalid_counts.png"), 
-    width = 60, height = 20, units = "cm", res = 600)
+    width = 65, height = 20, units = "cm", res = 600)
 par(mfrow=c(2,2), mar=c(9,4,3,4))
 # features
 prop <- prop.table(table(pk_ref@meta.data$cells_with_invalid_features, pk_ref@meta.data$Project))
@@ -305,17 +305,17 @@ text(x = bp, y = colSums(prop) + 0.1,
 # detailed
 prop <- prop.table(table(pk_ref@meta.data$cells_with_invalid_features[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063")]))
 bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x = "topright", bty = "n"), 
-        las=2, main="Proportion of Cells in Studies with invalid Genes per Sample", ylim = c(0,0.2))
+        las=2, main="Proportion of Cells in Studies with invalid Genes per Sample", ylim = c(0,0.1))
 # add percentages
-text(x = bp, y = colSums(prop) + 0.03, 
+text(x = bp, y = colSums(prop) + 0.01, 
      labels = paste0(round(prop[2,]  * 100, 1), "%"), cex = 0.8, srt = 90)
 
 # detailed
-prop <- prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE154778", "GSE155698", "GSM4293555", "OUGS")]))
+prop <- prop.table(table(pk_ref@meta.data$cells_with_incorrect_counts[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063", "GSE154778", "GSE155698", "GSM4293555", "OUGS")], pk_ref@meta.data$Patient2[pk_ref@meta.data$Project %in% c("GSE111672", "CA001063", "GSE154778", "GSE155698", "GSM4293555", "OUGS")]))
 bp <- barplot(prop, col= c("#99B4C3", "#901639"),legend.text = c("Valid", "Invalid"), horiz=F, args.legend=list(x = "topright", bty = "n"), 
-        las=2, main="Proportion of Cells in Studies with incorrect Gene Counts per Sample", ylim = c(0,0.2))
+        las=2, main="Proportion of Cells in Studies with incorrect Gene Counts per Sample", ylim = c(0,0.1))
 # add percentages
-text(x = bp, y = colSums(prop) + 0.03, 
+text(x = bp, y = colSums(prop) + 0.01, 
      labels = paste0(round(prop[2,]  * 100, 1), "%"), cex = 0.8, srt = 90)
 dev.off()
 
@@ -725,6 +725,9 @@ write.csv(month_gene_dict, paste0(ig_dir, "month_gene_dict.csv"), row.names = FA
 # to replace month genes in GSE filtered matrix data
 GSE111672_A$Genes[GSE111672_A$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
 GSE111672_B$Genes[GSE111672_B$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
+
+
+
 
 
 
