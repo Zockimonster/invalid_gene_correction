@@ -5,7 +5,10 @@ required_packages <- c( 'Matrix', 'dplyr','rhdf5', 'Seurat', 'patchwork', 'Seura
 invisible(lapply(required_packages, library, character.only = T))
 
 # obtain directories
+# peng data
+# wget "https://zenodo.org/records/3969339/files/StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad"
 peng_dir <- "folder where peng seurat file  (StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad) can be loaded"
+# wget "https://zenodo.org/records/6024273/files/pk_all.rds"
 ig_dir <- "folder where pk_all.rds can be loaded"
 gse_dir <- paste0(ig_dir, "gse111672/")
 
@@ -339,23 +342,9 @@ ggsave(paste0(ig_dir, "dim_plot_umap_integrated.png"), plot = plot_patched, widt
 ###########################
 
 # replace class genes from peng besca
-# using raw data would be advantageous to avoid subsetting & normalizing twice (but class genes are also present in raw data)
-# peng raw
-# wget "https://zenodo.org/records/3969339/files/StdWf1_PRJCA001063_CRC_besca2.raw.h5ad"
-# Convert(paste0(peng_dir, "StdWf1_PRJCA001063_CRC_besca2.raw.h5ad"), dest="h5seurat", overwrite = TRUE)
-# peng_raw <- LoadH5Seurat(paste0(peng_dir, "StdWf1_PRJCA001063_CRC_besca2.raw.h5seurat"))
-
-# https://www.nature.com/articles/s41422-019-0195-y
-# https://pmc.ncbi.nlm.nih.gov/articles/PMC6796938/
-# https://zenodo.org/record/3969339#.YgORVfhUtaY
-# https://www.nature.com/articles/s41422-019-0195-y#Sec11
-
 # get, read & adjust data
 library(rhdf5)
 # wget "https://zenodo.org/records/3969339/files/StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad"
-
-list.files(paste0(peng_dir, ""))
-
 #Convert(paste0(peng_dir, "StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad"), dest="h5seurat", overwrite = TRUE)
 peng_seurat <- LoadH5Seurat(paste0(peng_dir, "StdWf1_PRJCA001063_CRC_besca2.annotated.h5seurat"))
 h5ls(paste0(peng_dir, "StdWf1_PRJCA001063_CRC_besca2.annotated.h5ad"))
@@ -467,8 +456,6 @@ any(grepl("class", rownames(peng_seurat)))
 #################
 
 # replace month genes from gse111672
-# using raw matrix data would be advantageous to avoid subsetting & normalizing twice, as well as no month genes are in raw matrix files
-
 # get, read & adjust data
 # use wget or download from https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE111672
 # wget "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE111672&format=file&file=GSE111672%5FPDAC%2DA%2Dindrop%2Dfiltered%2DexpMat%2Etxt%2Egz"
@@ -725,6 +712,7 @@ write.csv(month_gene_dict, paste0(ig_dir, "month_gene_dict.csv"), row.names = FA
 # to replace month genes in GSE filtered matrix data
 GSE111672_A$Genes[GSE111672_A$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
 GSE111672_B$Genes[GSE111672_B$Genes %in% only_filtered] <- only_raw[grepl("DEC|MARC[[:digit:]]|MARCH|SEP", only_raw)]
+
 
 
 
